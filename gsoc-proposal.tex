@@ -30,7 +30,7 @@ AVX expands SSE instructions to 256 bit and also includes 3-operand fused multip
 
 \section{Preliminary Profiling}
 \label{sec:profiling}
-Some prelimiary profiling was done for the example OFDM implementation to identify performance bottlenecks. Figure~\ref{fig:1} identifies the most computationally intense blocks in OFDM Rx through a Control Flow Graph. 
+Some preliminary profiling was done for the example OFDM implementation to identify performance bottlenecks. Figure~\ref{fig:1} identifies the most computationally intense blocks in OFDM Rx through a Control Flow Graph. 
 
 \begin{figure}[h] 
 \centering\includegraphics[width=5in]{figure/ofdm_rx.png}
@@ -83,11 +83,11 @@ A core Haswell processor from Intel will be required for developing AVX2 and FMA
 \section{Schedule/Availability}
 A tentative schedule for the project is as follows: 
 \begin{itemize}
-\item \textbf{Pre GSoC phase}: Get familiar with AVX and AVX2. Finalize signal processing blocks to be implemented for OFDM.  
+\item \textbf{Pre GSoC phase}: Get familiar with AVX/AVX2, programming with SIMD intrinsics.   
 \item \textbf{19 May - 23 May}: Examine the source code, detailed profiling studies.
 \item \textbf{26 May - 30 May}: Upgrade existing VOLK kernels to AVX/AVX2.
 \item \textbf{2 June - 6 June}: Port OpenAirInterfaces code to VOLK.
-\item \textbf{9 June - 20 June}: Write kernels for transcedental functions.
+\item \textbf{9 June - 20 June}: Write kernels for transcendental functions.
 \item \textbf{23 June - 27 June}: Mid-term evaluations, tie loose ends.
 \item \textbf{30 June - 11 July}: Code OFDM frame detection and equalizer kernels.
 \item \textbf{14 July - 1 August}: Code kernels for Viterbi encoder/decoder, convolutional interleaving/deinterleaving and other new operations.
@@ -103,16 +103,20 @@ My availability is as follows:
 \end{itemize}
 
 \section{Background}
-I finished my B.Tech in Electrical Engineering from IIT Bombay in 2013 and spent the following period working as a research assistant at Carnegie Mellon University, USA. A paper based on my work was accepted for publication at ISCA 2014 (International Symposium on Computer Architecture). I will join a Masters program in Computer Science in August 2014 (school yet to be finalized). My primary research interest is Computer Architecture and I have undergraduate level experience in Signal Processing (courses on Signal/Systems, Communication Systems and Digital Communications). I have significant experience coding in C++ and written some code in Python. You may find some code that I have written previously, on my github: \url{https://github.com/abhowmick22}. You may find information about my research and my CV at my personal website: \url{https://sites.google.com/site/abhowmick22}.  
+I finished my B.Tech in Electrical Engineering from IIT Bombay, India in 2013 and spent the following period working as a research assistant at Carnegie Mellon University, USA. A paper based on my work was accepted for publication at ISCA 2014 (International Symposium on Computer Architecture). I am currently working as a research staff at IIT Bombay. I will join a Masters program in Computer Science in August 2014 (school yet to be finalized). My primary research interest is Computer Architecture and I have undergraduate level experience in Signal Processing (courses on Signal/Systems, Communication Systems and Digital Communications). I have significant experience coding in C++ and written some code in Python. You may find some code that I have written previously, on my github: \url{https://github.com/abhowmick22}. You may find information about my research and my CV at my personal website: \url{https://sites.google.com/site/abhowmick22}.  
 
 \subsection{Why GSoC?}
 
-My primary motivation is to develop code for a large software project and be part of an open source community - this will help my career objectives.
+My primary motivation is to develop code for a large software project and be part of an open source community - this will help my career objectives. I won't receive any university credits for this work - I am participating in order to get experience working on a project with a large codebase, and the whole cycle of software development, testing, maintenance. 
 
 \subsection{Why GNU Radio?}
 
-Working with GNU Radio allows me to leverage my electrical engineering background and gives me an opportunity to apply concepts learned in college to real-life scenarios. Also, my interest in developing software for parallel architectures drove me to choose software optimization using SIMD extensions. 
+Working with GNU Radio allows me to leverage my electrical engineering background and gives me an opportunity to apply concepts learned in college to real-life scenarios. Also, my interest in developing software for parallel architectures drove me to choose software optimization using SIMD extensions.
 
+\subsection{What after GSoC?}
+
+Post GSoC, I wish to continue developing more kernels for the VOLK library. I already have some experience with GPU programming, and continuing the work on VOLK will give me significant experience with SIMD programming - such a skill set aligns perfectly with my interest in parallel computing. I am also interested in going beyond vectorization to develop signal processing blocks, however I didn't include it in my proposal keeping in mind the time constraints. As I will be pursuing a Masters degree, I will talk with mentors to work out a realistic plan for continuing my association.
+ 
 \section{Conclusion}
 I would like to acknowledge Nathan West, Martin Braun, Tom Rondeau, Bogdan Diaconescu and the entire community for helping me get started with GNU Radio and advising me on the proposal. 
 
