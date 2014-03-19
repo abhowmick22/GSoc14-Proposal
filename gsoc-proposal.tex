@@ -10,7 +10,7 @@
 \bibliographystyle{ieeetr}
 \title{Google Summer of Code 2014 : Performance Optimization with VOLK}
 \date{\today}
-\author{Abhishek Bhowmick\\ abhowmick22@gmail.com\\ \\Potential Mentor: Nathan West}
+\author{Abhishek Bhowmick\\ abhowmick22@gmail.com\\ \\Potential Mentor : Nathan West}
 
 
 \begin{document}
@@ -18,72 +18,92 @@
 \tableofcontents
 \newpage
 \section{Introduction}
-GNU Radio \cite{gnuradio} is a software development toolkit that can be used to implement software defined radios using commodity hardware. The signal processing blocks it provides are mostly run on general purpose processors, and performance is a key metric for the implementations on various architectures. With this in mind, GNU Radio includes VOLK, which is a library of kernels that utilize vector SIMD extensions to popular architectures (SSE/AVX for x86, FMA for AMD64, Neon for ARM). Current VOLK kernels target stock operations such as vector multiply, conjugate, dot product etc, but various benchmarking studies have shown that more complex kernels deliver better runtime performance \cite{volk-benchmark}.   
+GNU Radio \cite{gnuradio} is a software development toolkit that can be used to implement software defined radios using commodity hardware. The signal processing blocks it provides are mostly run on general purpose processors, and performance is a key metric for the implementations on various architectures. With this in mind, GNU Radio includes VOLK, which is a library of kernels that utilize vector SIMD extensions to popular architectures (SSE, AVX, AVX2, FMA, ARM Neon). Current VOLK kernels target stock operations such as vector multiply, conjugate, dot product etc, but various benchmarking studies have shown that more complex kernels deliver better runtime performance \cite{volk-benchmark}.   
 
 \section{Proposal}
 
-The objectives of the project are to enhance the functionality/performance of the VOLK library and develop blocks for better OFDM performance. This will be achieved in two stages. First, AVX implementations will be developed for the current VOLK kernels, and turbo encoder/decoder blocks from OpenAirInterfaces \cite{openair} will be ported to VOLK. Next, new kernels will be developed to accelerate the in-tree receiver OFDM implementation, specifically targeting operations such as preamble detection, symbol timing and fine frequency offset correction, eventually leading to a complete OFDM frame detection kernel. New kernels will also be identified based on profiling studies, to accelerate performance bottlenecks. In-tree OFDM, DVB-T, ATSC and Fecapi were identified as potential candidates to speed up with new kernels. As a modification to the original idea, better performance of OFDM will be targeted through signal processing techniques.
+The objectives of the project are to enhance the functionality of the VOLK library with complex kernels and advanced ISA support. First, AVX/AVX2 implementations will be developed for the current VOLK kernels, and turbo encoder/decoder blocks from OpenAirInterfaces \cite{openair} will be ported to VOLK. Next, new kernels will be developed to accelerate blocks such as the in-tree receiver OFDM implementation, ATSC 2.x, DVB-T. These new kernels will be identified based on profiling studies, to accelerate performance bottlenecks. Also, vectorized support will be developed for transcendental functions such as exp, log10, atan2f etc.
 
-\section{Profiling and New Kernels}
+\section{SIMD extensions}
+
+AVX expands SSE instructions to 256 bit and also includes 3-operand fused multiply and accumulate instructions (FMA). These can be used to speed up operations like dot products, matrix operations, convolution etc. Its extension on Haswell chips, namely AVX2, include newer features like 3-operand general purpose bit manipulation, gather loads and integer vectors. These new features alongwith wider registers can be used with good benefits. 
+
+\section{Preliminary Profiling}
 \label{sec:profiling}
 Some prelimiary profiling was done for the example OFDM implementation to identify performance bottlenecks. Figure~\ref{fig:1} identifies the most computationally intense blocks in OFDM Rx through a Control Flow Graph. 
 
-\begin{figure} 
+\begin{figure}[h] 
 \centering\includegraphics[width=5in]{figure/ofdm_rx.png}
 \caption{Percentage runtime of different blocks in OFDM RX example \label{fig:1} }
 \end{figure}
 
-Oprofile \cite{oprofile} was used to further identify the C++ routines within these blocks that were processor heavy. For instance, the {\it fir\_filter\_ccf} and {\it fir\_filter\_ccc} blocks spent a lot of time in their respective filter() methods, that were already seen to have some vectorization with the {\it volk\_32fc\_32f/x2\_dot\_prod\_32fc\_a} kernels. AVX support and better vectorization can be used to target these regions. Similarly, the {\it work()} methods of {\it fractional\_resampler\_cc}, {\it additive\_scrambler\_bb} and {\it ofdm\_frame\_equalizer\_bb} may also be accelerated through vectorization. Detailed profiling will be carried out in other modules to identify bottlenecks that can be sped up with new kernels. 
+Oprofile \cite{oprofile} was used to further identify the C++ routines within these blocks that were processor heavy. For instance, the {\it fir\_filter\_ccf} and {\it fir\_filter\_ccc} blocks spent a lot of time in their respective filter() methods, that were already seen to have some vectorization with the {\it volk\_32fc\_32f/x2\_dot\_prod\_32fc\_a} kernels. AVX2 support and better vectorization can be used to target these regions. Similarly, the {\it work()} methods of {\it fractional\_resampler\_cc}, {\it additive\_scrambler\_bb} and {\it ofdm\_frame\_equalizer\_bb} are good candidates for vectorization. Also, profiling was carried out for the {\it qa\_atsc} test in gr-atsc module, which revealed that Viterbi decoder, Trellis encoder, convolutional interleaver/deinterleaver were most CPU-hungry operations.
 
-\section{OFDM Receiver}
-Orthogonal Frequency Division Multiplexing is a method for encoding digital data on multiple carrier frequencies that are orthogonal to each other. In an OFDM receiver, the signals received from channel are down-converted, filtered, sampled and digitised. An FFT block converts these samples back into the frequency domain. The parallel streams from the FFT are then decoded into symbols using symbol detectors and serialized to get back the original data stream. \\
+\section{New Kernels}
 
-\subsection{Frame synchronization}
-The synchronization block is needed to detect the beginning of the symbol and correct fine carrier frequency offset. The benchmark OFDM\_rx implements the Schmidl Cox Frequency/Timing Synchronization \cite{schmidl-cox}, which relies on a two-symbol training sequence, placed at the beginning of a frame. In the current implementation, symbol timing is done in the {\it ofdm\_sync\_sc\_cb} block while coarse frequency offset calculation is done in {\it chanest\_vcvc}. As both these operations are similar in nature, a new cross-correlation kernel will be developed to accelerate them.
-Another promising direction is to implement Awoseyila's method \cite{awoseyila} that uses only one training symbol to achieve time-frequency synchronization entirely in the time domain, that gives it the benefits of low complexity and fast convergence. As all processing is done in the time domain, we can combine the split frequency synchronization in the current OFDM implementation into a single frame synchronization kernel. 
-  
-\subsection{Channel Estimation}
-The {\it ofdm\_chanest\_vcvc} block does the channel estimation and coarse frequency offset, attaches this information as tags to the data symbols, strips the synchro symbols and passes the stream along. The current implementation employs a least square (LS) estimator with linear interpolation between alternate subcarriers - an MMSE estimator or higher order interpolation will be used for better performance \cite{channel-estimator}, this will require volk kernels for matrix operations. 
+Based on the profiling and initial discussions with GNU Radio community, following algorithms were identified for implementation as potential VOLK kernels:
 
-\subsection{Equalization}
-New kernels as identified in Section~\ref{sec:profiling} will be developed to accelerate the current simple DFE equalizer. A new MMSE-DFE equalizer \cite{mmse-equalizer} will be implemented to improve performance in adverse channel conditions.
+\begin{itemize}
+\item \textbf{OFDM Frame detection}: Current timing and frequency synchronization is done using Schmidl-Cox algorithm \cite{schmidl-cox}. The pre-FFT timing acquisition and fine frequency offset correction will be developed into a single kernel.
+\item \textbf{OFDM Equalizer}: This kernel will incorporate channel estimation based on pilot symbols and DFE equalization.
+\item \textbf{Viterbi Decoder, Trellis Encoder} : These were the most intensive blocks in atsc loopback test. Viterbi decoder was also shown to be the most cycle hungry block in out-of-tree DVB-T implementation by Bogdan Diaconescu \cite{dvbt}. 
+\item \textbf{Convolutional interleaver/deinterleaver}: Data interleaving and deinterleaving were also seen to be computationally hungry in the profiling of atsc. 
+\item \textbf{Transcendental functions}: Operations like log, atan2, exp etc.
+\end{itemize}
+
+%\section{OFDM Receiver}
+%Orthogonal Frequency Division Multiplexing is a method for encoding digital data on multiple carrier frequencies that are orthogonal to each other. In an OFDM receiver, the signals received from channel are down-converted, filtered, sampled and digitised. An FFT block converts these samples back into the frequency domain. The parallel streams from the FFT are then decoded into symbols using symbol detectors and serialized to get back the original data stream. \\
+%
+%\subsection{Frame synchronization}
+%The synchronization block is needed to detect the beginning of the symbol and correct fine carrier frequency offset. The benchmark OFDM\_rx implements the Schmidl Cox Frequency/Timing Synchronization \cite{schmidl-cox}, which relies on a two-symbol training sequence, placed at the beginning of a frame. In the current implementation, symbol timing is done in the {\it ofdm\_sync\_sc\_cb} block while coarse frequency offset calculation is done in {\it chanest\_vcvc}. As both these operations are similar in nature, a new cross-correlation kernel will be developed to accelerate them.
+%Another promising direction is to implement Awoseyila's method \cite{awoseyila} that uses only one training symbol to achieve time-frequency synchronization entirely in the time domain, that gives it the benefits of low complexity and fast convergence. As all processing is done in the time domain, we can combine the split frequency synchronization in the current OFDM implementation into a single frame synchronization kernel. 
+%  
+%\subsection{Channel Estimation}
+%The {\it ofdm\_chanest\_vcvc} block does the channel estimation and coarse frequency offset, attaches this information as tags to the data symbols, strips the synchro symbols and passes the stream along. The current implementation employs a least square (LS) estimator with linear interpolation between alternate subcarriers - an MMSE estimator or higher order interpolation will be used for better performance \cite{channel-estimator}, this will require volk kernels for matrix operations. 
+%
+%\subsection{Equalization}
+%New kernels as identified in Section~\ref{sec:profiling} will be developed to accelerate the current simple DFE equalizer. A new MMSE-DFE equalizer \cite{mmse-equalizer} will be implemented to improve performance in adverse channel conditions.
 
 \section{Deliverables}
 The following is a list of the deliverables which may be subject to change following discussions with mentors. 
 
 \begin{itemize}
-\item Deliverable 0: Provide AVX support for existing VOLK kernels.
-\item Deliverable 1: Port Turbo and Viterbi encoder/decoder from OpenAirInterfaces to VOLK and upgrade it to AVX.
+\item Deliverable 0: Provide AVX and AVX2 support for existing VOLK kernels.
+\item Deliverable 1: Port Turbo and Viterbi encoder/decoder from OpenAirInterfaces to VOLK and upgrade it to AVX2.
 \item Deliverable 2: Vectorize functions like exp, log10, atan2f.
-\item Deliverable 3: OFDM frame detection kernel, new VOLK kernels based on profiling OFDM, DVB-T, ATSC, Fecapi.
-\item Deliverable 4: MMSE channel estimator for OFDM.
-\item Deliverable 5: MMSE-DFE equalizer for OFDM.
+\item Deliverable 3: New VOLK kernels like OFDM frame detection, equalizer, Viterbi decoder, Trellis encoder, interleaver/de-interleaver.
+\item Deliverable 4: Any new kernels as may be suitably identified by profiling.
+%\item Deliverable 5: MMSE-DFE equalizer for OFDM.
 \end{itemize}
 
-\section{Schedule}
-A tentative schedule for the project is as follows : 
+\section{Hardware required}
+
+A core Haswell processor from Intel will be required for developing AVX2 and FMA kernels, which I may potentially buy if selected. Also, a USRP board might be needed for testing real-time capabilities of applications like ATSC and DVB-T. 
+
+\section{Schedule/Availability}
+A tentative schedule for the project is as follows: 
 \begin{itemize}
-\item \textbf{Pre GSoC phase} : Get familiar with AVX. Finalize signal processing blocks to be implemented for OFDM.  
-\item \textbf{19 May - 23 May} : Examine the source code, detailed profiling studies.
-\item \textbf{26 May - 30 May} : Upgrade existing VOLK kernels to AVX.
-\item \textbf{2 June - 6 June} : Port OpenAirInterfaces code to VOLK.
-\item \textbf{9 June - 20 June} : Code new volk kernels and test for speedups.
-\item \textbf{23 June - 27 June} : Mid-term evaluations, tie loose ends.
-\item \textbf{30 June - 11 July} : Code OFDM frame detection kernel.
-\item \textbf{14 July - 1 August} : Code new frame synchronizer, channel estimator and equalizer blocks for OFDM (or other signal processing blocks for better performance).
-\item \textbf{4 August - 15 August} : Write tests, bug fixes, clean code, add documentation.
+\item \textbf{Pre GSoC phase}: Get familiar with AVX and AVX2. Finalize signal processing blocks to be implemented for OFDM.  
+\item \textbf{19 May - 23 May}: Examine the source code, detailed profiling studies.
+\item \textbf{26 May - 30 May}: Upgrade existing VOLK kernels to AVX/AVX2.
+\item \textbf{2 June - 6 June}: Port OpenAirInterfaces code to VOLK.
+\item \textbf{9 June - 20 June}: Write kernels for transcedental functions.
+\item \textbf{23 June - 27 June}: Mid-term evaluations, tie loose ends.
+\item \textbf{30 June - 11 July}: Code OFDM frame detection and equalizer kernels.
+\item \textbf{14 July - 1 August}: Code kernels for Viterbi encoder/decoder, convolutional interleaving/deinterleaving and other new operations.
+\item \textbf{4 August - 15 August}: Write tests, bug fixes, clean code, add documentation.
 \end{itemize}
 
-\section{Availability}
+My availability is as follows:
 
 \begin{itemize}
-\item \textbf{Expected hrs/week} : 40 hours per week
-\item \textbf{Off period} : 5-10 blackout days, not contiguous. Lost time will be compensated appropriately.
-\item \textbf{Other commitments} : Possibly one online course (not finalized yet), with 10-15 hrs/week requirement.
+\item \textbf{Expected hrs/week}: 40 hours per week
+\item \textbf{Off period}: 5-10 blackout days, not contiguous. Lost time will be compensated appropriately.
+\item \textbf{Other commitments}: Possibly one online course (not finalized yet), with 10-15 hrs/week requirement.
 \end{itemize}
 
 \section{Background}
-I finished my B.Tech in Electrical Engineering from IIT Bombay in 2013 and spent the following period working as a research assistant at Carnegie Mellon University, USA. A paper based on my work was accepted for publication at ISCA 2014 (International Symposium on Computer Architecture). I will join a Masters program in Computer Science in August 2014 (school yet to be finalized). My primary research interest is Computer Architecture and I have undergraduate level experience in Signal Processing (courses on Signal/Systems, Communication Systems and Digital Communications). I have significant experience coding in C++ and written some code in Python. You may find some code that I have written previously, on my github : \url{https://github.com/abhowmick22}. You may find information about my research and my CV at my personal website : \url{https://sites.google.com/site/abhowmick22}.  
+I finished my B.Tech in Electrical Engineering from IIT Bombay in 2013 and spent the following period working as a research assistant at Carnegie Mellon University, USA. A paper based on my work was accepted for publication at ISCA 2014 (International Symposium on Computer Architecture). I will join a Masters program in Computer Science in August 2014 (school yet to be finalized). My primary research interest is Computer Architecture and I have undergraduate level experience in Signal Processing (courses on Signal/Systems, Communication Systems and Digital Communications). I have significant experience coding in C++ and written some code in Python. You may find some code that I have written previously, on my github: \url{https://github.com/abhowmick22}. You may find information about my research and my CV at my personal website: \url{https://sites.google.com/site/abhowmick22}.  
 
 \subsection{Why GSoC?}
 
@@ -100,4 +120,4 @@ I would like to acknowledge Nathan West, Martin Braun, Tom Rondeau, Bogdan Diaco
 \bibliography{ref.bib}
 
 \end{document}
-
+ 
