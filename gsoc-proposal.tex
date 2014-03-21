@@ -74,7 +74,7 @@ Based on the profiling and initial discussions with GNU Radio community, followi
 \item \textbf{OFDM Frame detection}: Current timing and frequency synchronization is done using Schmidl-Cox algorithm \cite{schmidl-cox}. The pre-FFT timing acquisition and fine frequency offset correction will be developed into a single kernel.
 \item \textbf{OFDM Equalizer}: This kernel will incorporate channel estimation based on pilot symbols and DFE equalization.
 \item \textbf{Viterbi Decoder, Trellis Encoder} : These were the among the most intensive blocks in ATSC loopback test. Viterbi decoder was also shown to be the most cycle hungry block in out-of-tree DVB-T implementation by Bogdan Diaconescu \cite{dvbt}. We can potentially adapt the Viterbi encoder/decoder from OpenAirInterfaces into VOLK kernels for usage in ATSC, DVB-T.
-\item \textbf{Transcendental functions}: Operations like log, atan2, exp etc.
+\item \textbf{Transcendental functions}: Operations like log, atan, exp, sin, cos etc.
 \item \textbf{Convolutional interleaver/deinterleaver}: Data interleaving and deinterleaving were also seen to be computationally hungry in the profiling of ATSC. This will be attempted if time permits. 
 \item \textbf{Miscellaneous}: Detailed profiling similar to Section~\ref{sec:profiling} is bound to reveal performance bottlenecks that can be addressed with new kernels. Some operations that were already identified include fractional resampler, fir filter, additive scrambler etc. Identifying and accelerating such operations will be attempted following detailed discussions with mentors and if time permits.
 \end{itemize}
@@ -98,8 +98,9 @@ The following is a list of the deliverables which may be subject to change follo
 \item Deliverable 1: Upgrade existing VOLK kernels as outlined in Section~\ref{sec:old-kernels} to have AVX/AVX2 proto-kernels.
 \item Deliverable 2: Port Turbo and Viterbi encoder/decoder for LTE/802.11 from OpenAirInterfaces to VOLK. This will comprise writing generic versions of these blocks, creating volk wrappers and also developing proto-kernels for AVX/AVX2. This will potentially yield Viterbi and Turbo FEC volk kernels that may be re-used by other applications.  
 \item Deliverable 3: Develop new VOLK kernels for OFDM frame detection, OFDM equalizer. In addition to performance, high reconfigurability and portability to other applications such as WLAN, DVB-T, DAB etc will be key concerns.  
-\item Deliverable 4: Vectorize functions like exp, log, atan2, sin, cos.  
-\item Deliverable 5: (Variable) If time permits, target additional operations such as data interleaving, resampling, filtering, PSK sync. Potential operations to be accelerated will be identified before GSoC begins. Their implementation will be done within GSoC period if time permits, or after program completion as part of continuing association with the community.
+\item Deliverable 4: Vectorize functions like exp, log, atan, sin, cos.  
+\item Deliverable 5: Detailed documentation, QA tests for the above. 
+\item Deliverable 6: (Variable) If time permits, target additional operations such as data interleaving, resampling, filtering, PSK sync. Potential operations to be accelerated will be identified before GSoC begins. Their implementation will be done within GSoC period if time permits, or after program completion as part of continuing association with the community.
 \end{itemize}
 
 \section{Hardware required}
@@ -125,8 +126,8 @@ A tentative schedule for the project is as follows:
 \centering
 \begin{tabular}{>{\bfseries}p{3.8cm} p{10.2cm}}
 \hline
-Pre GSoC phase & Get familiar with AVX/AVX2, programming with SIMD intrinsics, detailed profiling to identify performance bottlenecks. \\ 
-19 May - 23 May \par \textnormal{(1 week)} & Discussions with mentor/community on design of new kernels. \\
+Pre GSoC phase & Get familiar with AVX/AVX2, programming with SIMD intrinsics, detailed profiling to identify performance bottlenecks, engage with the community. \\ 
+19 May - 23 May \par \textnormal{(1 week)} & Finalize kernels to be implemented, formally define functional specifications \\
 26 May - 6 June \par \textnormal{(2 weeks)} & Upgrade VOLK kernels from Section~\ref{sec:old-kernels} to AVX/AVX2. \\
 9 June - 20 June \par \textnormal{(2 weeks)} & Code OFDM Frame detection kernel. \\ 
 23 June - 27 June \par \textnormal{(1 week)} & Mid-term evaluations, add documentation, testing, benchmarking. \\ 
@@ -148,7 +149,7 @@ My availability is as follows:
 \end{itemize}
 
 \section{Background}
-I finished my B.Tech in Electrical Engineering from IIT Bombay, India in 2013 and spent the following period working as a research assistant at Carnegie Mellon University, USA. A paper based on my work was accepted for publication at ISCA 2014 (International Symposium on Computer Architecture). I am currently working as a research staff at IIT Bombay. I will join a Masters program in Computer Science in August 2014 (school yet to be finalized). My primary research interest is Computer Architecture and I have undergraduate level experience in Signal Processing (courses on Signal/Systems, Communication Systems and Digital Communications). I have significant experience coding in C++ and written some code in Python. I also have some experience in x86 assembly and hence would be comfortable with any ASM programming that might be required. You may find some code that I have written previously, on my github: \url{https://github.com/abhowmick22}. You may find information about my research and my CV at my personal website: \url{https://sites.google.com/site/abhowmick22}.  
+I finished my B.Tech in Electrical Engineering from IIT Bombay, India in 2013 and spent the following period working as a research assistant at Carnegie Mellon University, USA. A paper I co-authored based on this work was accepted for publication at ISCA 2014 (International Symposium on Computer Architecture). I am currently working as a research staff at IIT Bombay. I will join a Masters program in Computer Science in August 2014 (school yet to be finalized). My primary research interest is Computer Architecture and I have undergraduate level experience in Signal Processing (courses on Signal/Systems, Communication Systems and Digital Communications). I have significant experience coding in C++ and written some code in Python. I also have some experience in x86 assembly and hence would be comfortable with any ASM programming that might be required. You may find some code that I have written previously, on my github: \url{https://github.com/abhowmick22}. You may find information about my research and my CV at my personal website: \url{https://sites.google.com/site/abhowmick22}.  
 
 \subsection{Why GSoC?}
 
